@@ -5,16 +5,25 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# 2. Load the dataset into a DataFrame and clean the data
+# 2. Load the dataset and perform a thorough cleaning
 df = pd.read_csv("vehicles_us.csv")
 
-# Clean 'price' column: Ensure numeric with no problematic values
-df['price'] = pd.to_numeric(df['price'], errors='coerce').fillna(0)
-df['price'] = df['price'].clip(lower=0)  # Ensure no negative prices
+# Check and print data types (for debugging)
+st.write("Data Types:", df.dtypes)
 
-# Clean 'odometer' column: Ensure numeric with no problematic values
+# Ensure 'price' column is numeric, replacing invalid values with 0
+df['price'] = pd.to_numeric(df['price'], errors='coerce').fillna(0)
+df['price'] = df['price'].clip(lower=0).astype(float)  # Ensure all prices are non-negative
+
+# Ensure 'odometer' column is numeric, replacing invalid values with 0
 df['odometer'] = pd.to_numeric(df['odometer'], errors='coerce').fillna(0)
-df['odometer'] = df['odometer'].clip(lower=0)  # Ensure no negative values
+df['odometer'] = df['odometer'].clip(lower=0).astype(float)  # Ensure non-negative odometer values
+
+# Ensure 'model_year' is properly handled
+df['model_year'] = pd.to_numeric(df['model_year'], errors='coerce').fillna(0).astype(int)
+
+# Convert the entire DataFrame to compatible types using convert_dtypes()
+df = df.convert_dtypes()
 
 # 3. Title and Introduction
 st.title("Vehicle Data Exploratory Dashboard")
