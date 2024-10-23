@@ -10,8 +10,13 @@ import pyarrow as pa  # Import PyArrow for conversion testing
 df = pd.read_csv("vehicles_us.csv")
 
 # Clean 'price' column: Ensure numeric with no problematic values
-df['price'] = pd.to_numeric(df['price'], errors='coerce').fillna(0).astype('int64')
+df['price'] = pd.to_numeric(df['price'], errors='coerce').fillna(0).astype('float64')
 df['price'] = df['price'].clip(lower=0)  # Ensure no negative prices
+
+# Additional Debugging: Check for non-numeric or problematic data in 'price'
+st.write("Inspect non-numeric data in 'price':")
+st.write(df[df['price'].apply(lambda x: not isinstance(x, (int, float)))])
+st.write(f"NaN values in 'price': {df['price'].isna().sum()}")
 
 # Debug: Display data types and the first few rows to verify data integrity
 st.write("Data Types:")
@@ -19,7 +24,7 @@ st.write(df.dtypes)
 st.write("Sample Data:")
 st.write(df.head())
 
-# Test PyArrow conversion to ensure compatibility before passing to Streamlit
+# Test PyArrow conversion with improved type handling
 try:
     table = pa.Table.from_pandas(df)
     st.write("PyArrow conversion successful!")
