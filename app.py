@@ -8,9 +8,13 @@ import plotly.express as px
 # 2. Load the dataset into a DataFrame and clean the data
 df = pd.read_csv("vehicles_us.csv")
 
-# Ensure 'price' and 'odometer' columns are numeric, with safe data conversion
-df['price'] = pd.to_numeric(df['price'], errors='coerce').fillna(0).astype(float)
-df['odometer'] = pd.to_numeric(df['odometer'], errors='coerce').fillna(0).astype(float)
+# Clean 'price' column: Ensure numeric with no problematic values
+df['price'] = pd.to_numeric(df['price'], errors='coerce').fillna(0)
+df['price'] = df['price'].clip(lower=0)  # Ensure no negative prices
+
+# Clean 'odometer' column: Ensure numeric with no problematic values
+df['odometer'] = pd.to_numeric(df['odometer'], errors='coerce').fillna(0)
+df['odometer'] = df['odometer'].clip(lower=0)  # Ensure no negative values
 
 # 3. Title and Introduction
 st.title("Vehicle Data Exploratory Dashboard")
@@ -44,7 +48,7 @@ filtered_df = df[
 # 6. Add a checkbox to switch between showing all data and filtered data
 show_all_data = st.checkbox("Show All Data", value=False)
 
-# Filter the DataFrame based on user input or show all data
+# Use filtered data or full data based on the checkbox
 data_to_plot = df if show_all_data else filtered_df
 
 # 7. Display Filtered Data
@@ -82,3 +86,4 @@ st.write(filtered_df.describe())
 st.markdown("#### Key Insights")
 st.markdown("- Use the filters to narrow down the dataset by model year and odometer readings.")
 st.markdown("- Visualize trends between vehicle prices, odometer readings, and model years.")
+
