@@ -1,8 +1,8 @@
 [server]
 headless = true
-port = 8506
+port = 8501
 
 [browser]
-serverAddress = "172.29.202.129"
-serverPort = 8506
+serverAddress = "0.0.0.0"
+serverPort = 8501
 
