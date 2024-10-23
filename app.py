@@ -1,24 +1,29 @@
-# app.py (formally streamlit_dashboard.py)
+# app.py (using PyArrow directly for DataFrame management)
 
 # 1. Import necessary libraries
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import fletcher as fr  # Use Fletcher for Arrow-backed DataFrames
+import pyarrow as pa  # Use PyArrow directly
+import pyarrow.pandas_compat  # Ensure pandas compatibility
 
 # 2. Load the dataset into a DataFrame and clean the data
 df = pd.read_csv("vehicles_us.csv")
 
 # Clean 'price' column: Ensure numeric with no problematic values
-df['price'] = pd.to_numeric(df['price'], errors='coerce').fillna(0)
+df['price'] = pd.to_numeric(df['price'], errors='coerce').fillna(0).astype('float64')
 df['price'] = df['price'].clip(lower=0)  # Ensure no negative prices
 
 # Clean 'odometer' column: Ensure numeric with no problematic values
-df['odometer'] = pd.to_numeric(df['odometer'], errors='coerce').fillna(0)
+df['odometer'] = pd.to_numeric(df['odometer'], errors='coerce').fillna(0).astype('float64')
 df['odometer'] = df['odometer'].clip(lower=0)  # Ensure no negative values
 
-# 3. Convert the DataFrame to an Arrow-backed Fletcher Frame
-df = fr.Frame(df)
+# 3. Convert DataFrame to an Arrow Table
+try:
+    table = pa.Table.from_pandas(df)
+    st.write("PyArrow conversion successful!")
+except Exception as e:
+    st.write(f"PyArrow conversion failed: {e}")
 
 # 4. Title and Introduction
 st.title("Vehicle Data Exploratory Dashboard")
