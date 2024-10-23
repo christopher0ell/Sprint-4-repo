@@ -8,11 +8,9 @@ import plotly.express as px
 # 2. Load the dataset into a DataFrame and clean the data
 df = pd.read_csv("vehicles_us.csv")
 
-# Ensure 'price' column is numeric, replacing invalid values with 0
-df['price'] = pd.to_numeric(df['price'], errors='coerce').fillna(0).astype(int)
-
-# Ensure 'odometer' column is numeric, replacing invalid values with 0
-df['odometer'] = pd.to_numeric(df['odometer'], errors='coerce').fillna(0).astype(int)
+# Ensure 'price' and 'odometer' columns are numeric, with safe data conversion
+df['price'] = pd.to_numeric(df['price'], errors='coerce').fillna(0).astype(float)
+df['odometer'] = pd.to_numeric(df['odometer'], errors='coerce').fillna(0).astype(float)
 
 # 3. Title and Introduction
 st.title("Vehicle Data Exploratory Dashboard")
