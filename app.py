@@ -1,112 +1,56 @@
-# app.py (using Fastparquet for DataFrame management)
-
-import os
 import streamlit as st
 import pandas as pd
-import plotly.express as px
+import numpy as np
+import matplotlib.pyplot as plt
 
-# Disable PyArrow usage to prevent conflicts
-os.environ["PYARROW_IGNORE_IMPORT"] = "1"
+# Title and Introduction
+st.title("Vehicle Data Analysis and Visualization")
+st.write("""
+This Streamlit app loads vehicle data, preprocesses it by filling missing values, 
+removes outliers, and provides visual insights into the relationship between 
+vehicle model years and prices.
+""")
 
-# 1. Load the dataset into a DataFrame and clean the data
-df = pd.read_csv("vehicles_us.csv")
+# Data Loading Section
+uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
+    st.write("### First 5 Rows of the Dataset")
+    st.write(df.head())
 
-# 2. Clean 'price' column: Ensure numeric with no problematic values
-df['price'] = pd.to_numeric(df['price'], errors='coerce').fillna(0).clip(lower=0).astype('float64')
+    # Preprocessing Functions
+    def fill_with_median(df, group_col, target_col):
+        return df[target_col].fillna(df.groupby(group_col)[target_col].transform('median'))
 
-# 3. Clean 'odometer' column: Ensure numeric with no problematic values
-df['odometer'] = pd.to_numeric(df['odometer'], errors='coerce').fillna(0).clip(lower=0).astype('float64')
+    # Preprocessing: Filling Missing Values
+    df['model_year'] = fill_with_median(df, 'model', 'model_year')
+    df['cylinders'] = fill_with_median(df, 'model', 'cylinders')
+    df['odometer'] = fill_with_median(df, ['model', 'model_year'], 'odometer')
 
-# 4. Reset index to avoid index-related errors during conversion
-df = df.reset_index(drop=True)
+    st.write("### Data After Preprocessing")
+    st.write(df.head())
 
-# 5. Save DataFrame to Parquet using Fastparquet
-df.to_parquet("vehicles_us.parquet", engine='fastparquet')
+    # Outlier Removal
+    q_low_price = df['price'].quantile(0.01)
+    q_high_price = df['price'].quantile(0.99)
+    df_filtered = df[(df['price'] >= q_low_price) & (df['price'] <= q_high_price)]
 
-# 6. Read the Parquet file back using Fastparquet with error handling
-try:
-    df = pd.read_parquet("vehicles_us.parquet", engine='fastparquet')
-    st.write("Fastparquet conversion successful!")
-except Exception as e:
-    st.write(f"Fastparquet conversion failed: {e}")
+    q_low_year = df['model_year'].quantile(0.01)
+    q_high_year = df['model_year'].quantile(0.99)
+    df_filtered = df_filtered[(df_filtered['model_year'] >= q_low_year) & (df_filtered['model_year'] <= q_high_year)]
 
-# 7. Title and Introduction
-st.title("Vehicle Data Exploratory Dashboard")
-st.markdown("### Use this dashboard to explore vehicle data interactively.")
+    st.write("### Data After Outlier Removal")
+    st.write(df_filtered.head())
 
-# 8. Sidebar Filters
-st.sidebar.header("Filter Options")
+    # Scatterplot: Price vs. Model Year
+    st.write("### Scatterplot: Price vs. Model Year (Filtered Data)")
+    fig, ax = plt.subplots()
+    ax.scatter(df_filtered['model_year'], df_filtered['price'], alpha=0.5)
+    ax.set_xlabel('Model Year')
+    ax.set_ylabel('Price')
+    ax.set_title('Scatterplot of Price vs. Model Year (Filtered)')
+    st.pyplot(fig)
 
-# Slider to filter by model year
-model_year = st.sidebar.slider(
-    "Select Model Year Range",
-    int(df['model_year'].min()),
-    int(df['model_year'].max()),
-    (2000, 2019)
-)
+else:
+    st.warning("Please upload a CSV file to proceed.")
 
-# Slider to limit the odometer readings
-odometer_limit = st.sidebar.slider(
-    "Odometer Limit (Max)",
-    0,
-    int(df['odometer'].max()),
-    100000
-)
-
-# 9. Filter DataFrame based on sidebar input
-filtered_df = df[
-    (df['model_year'].between(*model_year)) &
-    (df['odometer'] <= odometer_limit)
-]
-
-# 10. Add a checkbox to switch between showing all data and filtered data
-show_all_data = st.checkbox("Show All Data", value=False)
-
-# Use filtered data or full data based on the checkbox
-data_to_plot = df if show_all_data else filtered_df
-
-# 11. Validate 'price' column for any invalid or infinite values
-invalid_price = data_to_plot[~data_to_plot['price'].apply(lambda x: isinstance(x, (int, float)))]
-if not invalid_price.empty:
-    st.write("Invalid 'price' entries found:")
-    st.write(invalid_price)
-
-# Replace infinity values with NaN, and fill NaNs with 0
-data_to_plot.replace([float('inf'), -float('inf')], pd.NA, inplace=True)
-data_to_plot.fillna(0, inplace=True)
-
-# 12. Display Filtered Data
-st.subheader("Filtered Data Preview")
-st.dataframe(data_to_plot.astype('object'))  # Use object dtype to prevent PyArrow conversion issues
-
-# 13. Plot: Price Distribution
-st.subheader("Price Distribution")
-fig_price = px.histogram(data_to_plot, x='price', nbins=50, title='Distribution of Prices')
-st.plotly_chart(fig_price)
-
-# 14. Scatter Plot: Price vs Odometer
-st.subheader("Scatter Plot: Price vs Odometer")
-fig_scatter = px.scatter(
-    data_to_plot, x='odometer', y='price',
-    title='Price vs Odometer',
-    labels={'odometer': 'Odometer Reading', 'price': 'Price (USD)'}
-)
-st.plotly_chart(fig_scatter)
-
-# 15. Scatter Plot: Price vs Model Year
-st.subheader("Scatter Plot: Price vs Model Year")
-fig_year_price = px.scatter(
-    data_to_plot, x='model_year', y='price',
-    title='Price vs Model Year',
-    labels={'model_year': 'Model Year', 'price': 'Price (USD)'}
-)
-st.plotly_chart(fig_year_price)
-
-# 16. Display Summary Statistics
-st.subheader("Summary Statistics")
-st.write(filtered_df.describe())
-
-# 17. Insights Section (Markdown)
-st.markdown("#### Key Insights")
-st.markdown("- Use the filters to narrow down the dataset by model year and odometer readings.")
-st.markdown("- Visualize trends between vehicle prices, odometer readings, and model years.")
